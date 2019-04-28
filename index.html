@@ -6,9 +6,33 @@
 </head>
 
 <body>
-  <h1>Camp Shooter</h1>
-  <div id="container">
+  <div id="game">
+    <h1>{{ headline }}</h1>
+    <div id="container">
+      <div
+        v-bind:class="{ character: true, isRunning: hero.hSpeed !== 0, toLeft: hero.toLeft, isShooting: hero.shooting }"
+        v-bind:id="hero.id"
+        v-bind:style="{ left: hero.left + 'px', bottom: hero.bottom + 'px' }"
+      ></div>
+
+      <div
+        v-for="enemy in enemies"
+        v-bind:class="{ character: true, purple: true, isRunning: enemy.hSpeed !== 0, toLeft: enemy.toLeft, isShooting: enemy.shooting }"
+        v-bind:id="enemy.id"
+        v-bind:style="{ left: enemy.left + 'px', bottom: enemy.bottom + 'px' }"
+      ></div>
+
+      <div
+        v-for="bullet in bullets"
+        class="bullet"
+        v-bind:style="{ left: bullet.left + 'px', bottom: bullet.bottom + 'px' }"
+      ></div>
+    </div>
   </div>
+
+  <!-- development version, includes helpful console warnings -->
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.slim.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.slim.js"></script>
   <script src="script.js"></script>
