@@ -4,6 +4,10 @@ var enemies = []
 var $enemies = {}
 var hero = null
 
+var gravity = 9.8;
+var bottomGround = 60;
+var fps = 60
+
 /* CLASSES */
 
 function Character(id, left) {
@@ -13,8 +17,9 @@ function Character(id, left) {
     this.running = false;
     this.shooting = 0;
     this.left = left || Math.floor(Math.random() * 750);
-    this.bottom = 60
+    this.bottom = bottomGround;
     this.top = 120;
+    this.vSpeed = 0;
 
     this.health = 100;
 
@@ -35,10 +40,10 @@ Character.prototype.hit = function() {
         this.$el.addClass('dead');
 
         var cha = this
-        setTimeout(function() {
-            cha.alive = true
-            cha.$el.removeClass('dead')
-            cha.health = 100
+        setTimeout(function () {
+            cha.alive = true;
+            cha.$el.removeClass('dead');
+            cha.health = 100;
             update(cha);
         }, 5000)
     }
@@ -49,17 +54,18 @@ Character.prototype.destroy = function() {
     if (i > -1) {
         enemies.splice(i, 1);
     }
-    delete($enemies[this.id])
+
+    delete $enemies[this.id]
 }
 Character.prototype.move = function(toLeft, left) {
     this.left = left
 
-    if (this.toLeft !== toLeft) {
-        this.toLeft = toLeft
-        this.$el.toggleClass('toLeft', toLeft)
+    if (this.toLeft !== left) {
+        this.toLeft = left;
+        this.$el.toggleClass('toLeft', toLeft);
     }
 
-    this.$el.css('left', left + 'px');
+    this.$el.css('left', this.left + 'px');
 }
 
 
@@ -123,7 +129,7 @@ function createEnemy(id, left) {
     enemy.$el.addClass('purple');
 
     enemies.push(enemy);
-    update(enemy);
+    update(enemy)
 }
 
 function isHit(bul, cha) {
@@ -148,7 +154,14 @@ function update(cha) {
             cha.$el.removeClass('isShooting');
             if (cha.running) cha.$el.addClass('isRunning');
         }
-    } else if (cha.running) {
+    }
+
+    // bottomGround ; gravity ; cha.vSpeed
+    cha.vSpeed -= gravity / fps;
+    cha.bottom += cha.vSpeed;
+    cha.$el.css('bottom', cha.bottom + 'px');
+    
+    if (cha.running) {
         if (cha.toLeft) {
             cha.left -= 1;
         } else {
@@ -181,10 +194,17 @@ function shoot(cha) {
         cha.$el.addClass('isShooting');
         cha.$el.removeClass('isRunning');
 
-        var bul;
-    
-        if (cha.toLeft) bul = new Bullet(cha.left - 8, cha.bottom + 50, true, cha.id)
-        else bul = new Bullet(cha.left + 50, cha.bottom + 50, false, cha.id)
+        var x;
+        var y = cha.bottom + 50;
+
+        /* TODO: createBullet */
+        if (cha.toLeft) {
+            x = cha.left - 8;
+        } else {
+            x = cha.left + 50;
+        }
+
+        new Bullet(x, y, cha.toLeft, cha.id)
     }
 }
 
@@ -208,10 +228,8 @@ function goRight(cha) {
     cha.$el.removeClass('toLeft');
 }
 
-
 socket.on('connect', function() {
     console.info('Welcome', ' ', socket.id);
-
     socket.emit('token', 'qwerty');
 });
 
@@ -222,29 +240,39 @@ socket.on('disconnect', function() {
 socket.on('data', function(data){
     console.info(data);
 
-    if (!data.action) return false;
+    if (!data || !data.action) return false;
 
     switch(data.action) {
-        case 'player': if (data.id && data.left) {
-            createEnemy(data.id, data.left);
-        }
-        break;
-        case 'left': $enemies[data.id] && $enemies[data.id].destroy()
-        break;
-        case 'shoot': 
-            $enemies[data.id] && shoot($enemies[data.id])
-        break;
-        case 'goLeft':
-            $enemies[data.id] && goLeft($enemies[data.id])
-        break;
-        case 'goRight':
-            $enemies[data.id] && goRight($enemies[data.id])
-        break;
-        case 'stopRunning':
-            $enemies[data.id] && stopRunning($enemies[data.id])
-        break;
-    }
+        case 'player':
+            if (data.id) {
+                createEnemy(data.id, data.left);
+            }
+            break;
 
+        case 'shoot':
+            if (data.id in $enemies) {
+                shoot($enemies[data.id]);
+            }
+            break;
+
+        case 'goLeft':
+            if (data.id in $enemies) {
+                goLeft($enemies[data.id]);
+            }
+            break;
+
+        case 'goRight':
+            if (data.id in $enemies) {
+                goRight($enemies[data.id])
+            }
+            break;
+
+        case 'stopRunning':
+            if (data.id in $enemies) {
+                stopRunning($enemies[data.id]);
+            }
+            break;
+    }
 });
 
 
@@ -258,34 +286,28 @@ $(document).ready(function() {
 
     $(document).keyup(function(e) {
         switch(e.which) {
-            case 37: 
-            case 39: 
+            case 65: 
+            case 68:
                 socket.emit('data', { action: 'stopRunning' })
                 stopRunning(hero);
-            break;
+                break;
         }
     });
 
     $(document).keydown(function(e) {
         switch(e.which) {
-            case 32: /* space */
-                socket.emit('data', { action: 'shoot' })
-                shoot(hero);
-            break;
-            case 37: /* left */
+            case 32:
+                hero.vSpeed = 5;
+                break;
+
+            case 65: /* left */
                 socket.emit('data', { action: 'goLeft' })
                 goLeft(hero);
             break;
-            case 38: /* up */
-                
-            break;
 
-            case 39: /* right */
+            case 68: /* right */
                 socket.emit('data', { action: 'goRight' })
                 goRight(hero)
-            break;
-
-            case 40: /* down */
             break;
 
             default: return; /* exit this handler for other keys */
@@ -293,15 +315,18 @@ $(document).ready(function() {
         e.preventDefault(); /* prevent the default action (scroll / move caret) */
     });
 
+    $(document).mousedown(function (e) {
+        socket.emit('data', { action: 'shoot' })
+        shoot(hero);
+    })
 
-    socket.on('info', function(msg) {
-        console.info(msg)          
-    });
+    socket.on('ok', function() {
+        console.info('Auth!')
+    })
 
     socket.emit('data', {
         id: socket.id,
         action: 'player',
         left: hero.left
-    }) 
-
+    })
 });
