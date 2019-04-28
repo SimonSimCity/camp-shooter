@@ -49,6 +49,7 @@ Character.prototype.destroy = function() {
     if (i > -1) {
         enemies.splice(i, 1);
     }
+    delete($enemies[this.id])
 }
 Character.prototype.move = function(toLeft, left) {
     this.left = left
@@ -221,30 +222,26 @@ socket.on('disconnect', function() {
 socket.on('data', function(data){
     console.info(data);
 
-    if (!data.action || !$enemies[data.id]) return false;
+    if (!data.action) return false;
 
     switch(data.action) {
         case 'player': if (data.id && data.left) {
             createEnemy(data.id, data.left);
         }
         break;
-        case 'left': enemies.forEach(function(enemy) {
-            if (enemy.id === data.id) {
-                enemy.destroy()
-            }
-        })
+        case 'left': $enemies[data.id] && $enemies[data.id].destroy()
         break;
         case 'shoot': 
-            shoot($enemies[data.id])
+            $enemies[data.id] && shoot($enemies[data.id])
         break;
         case 'goLeft':
-            goLeft($enemies[data.id])
+            $enemies[data.id] && goLeft($enemies[data.id])
         break;
         case 'goRight':
-            goRight($enemies[data.id])
+            $enemies[data.id] && goRight($enemies[data.id])
         break;
         case 'stopRunning':
-            stopRunning($enemies[data.id])
+            $enemies[data.id] && stopRunning($enemies[data.id])
         break;
     }
 
