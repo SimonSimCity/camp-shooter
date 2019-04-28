@@ -1,3 +1,6 @@
+var enemies = []
+var hero = null
+
 /* CLASSES */
 
 function Character(id) {
@@ -8,6 +11,9 @@ function Character(id) {
     this.shooting = 0;
     this.left = Math.floor(Math.random() * 750);
     this.bottom = 60
+    this.top = 120;
+
+    this.health = 100;
 
     this.toLeft = this.left > 400;
 
@@ -15,26 +21,63 @@ function Character(id) {
 
     addToContainer(this, html);
 }
+Character.prototype.hit = function() {
+    this.health -= 10;
+
+    if (this.health < 1) {
+        this.alive = false
+
+        this.$el.addClass('dead');
+
+        if (this.id === 'hero') {
+            alert('You died, man');
+        }
+    }
+}
+Character.prototype.destroy = function() {
+    this.$el.remove()
+    var i = enemies.indexOf(this)
+    if (i > -1) {
+        enemies.splice(i, 1);
+    }
+}
+
 
 function Bullet(x, y, toLeft, id) {
     this.left = x;
     this.bottom = y;
     this.toLeft = toLeft;
+    this.impact = 0;
 
     var html = `<div class="bullet" style="left: ${this.left}px; bottom: ${this.bottom}px"></div>`;
 
     addToContainer(this, html);
 
     this.run = function() {
-        if (this.toLeft) this.left -= 10;
-        else this.left += 10;
-
-        if (this.left > 800 || this.left < 0) {
-            this.$el.remove();
+        if (this.impact) {
+            if (this.impact-- === 1) this.$el.remove()
+            else requestAnimationFrame(this.run.bind(this))
         } else {
-            this.$el.css('left', this.left + 'px');
 
-            requestAnimationFrame(this.run.bind(this))
+            if (this.toLeft) this.left -= 10;
+            else this.left += 10;
+
+            if (this.left > 800 || this.left < 0) {
+                this.$el.remove();
+            } else {
+
+                isHit(this, hero)
+                
+                for(var i = 0; i < enemies.length; i++) {
+                    isHit(this, enemies[i])
+                }
+                
+
+                this.$el.css('left', this.left + 'px');
+
+                requestAnimationFrame(this.run.bind(this))
+            }
+
         }
     }
 
@@ -54,16 +97,31 @@ function addToContainer(obj, html) {
     $('#container').append(obj.$el);
 }
 
-var enemies = {}
 function createEnemy(id) {
     var enemy = new Character(id);
 
     enemy.$el.addClass('purple');
 
-    enemies[id] = enemy;
+    enemies.push(enemy);
+}
+
+function isHit(bul, cha) {
+    if (!cha.alive) return false;
+
+    if (bul.left + 4 > cha.left && 
+      bul.left + 4 < cha.left + 50) {
+        if (bul.bottom + 3 > cha.bottom &&
+          bul.bottom + 3 < cha.top) {
+
+            cha.hit();
+            bul.impact = 10;
+        }
+    }
 }
 
 function update(cha) {
+    if (!cha.alive) return false;
+
     if (cha.shooting) {
         if(cha.shooting-- === 1) {
             cha.$el.removeClass('isShooting');
@@ -131,10 +189,38 @@ function goRight(cha) {
 }
 
 
+var socket = io('https://pchat.day4.live');
+
+socket.on('connect', function() {
+    console.info('Welcome', ' ', socket.id);
+});
+
+socket.on('disconnect', function() {
+    console.info('Connection lost', ' ', socket.id);
+});
+
+socket.on('data', function(data){
+    console.info(data);
+
+    if (!data.action) return false;
+
+    switch(data.action) {
+        case 'player': if (data.id) createEnemy(data.id);
+        break;
+        case 'left': enemies.forEach(function(enemy) {
+            if (enemy.id === data.id) {
+                enemy.destroy()
+            }
+        })
+        break;
+    }
+
+});
+
 
 $(document).ready(function() {
     
-    var hero = new Character('hero');
+    hero = new Character('hero');
 
     requestAnimationFrame(function() {
         update(hero);
@@ -173,7 +259,10 @@ $(document).ready(function() {
         e.preventDefault(); /* prevent the default action (scroll / move caret) */
     });
 
-    /* TEST */
-    createEnemy('qwert123');
+    socket.emit('data', {
+        id: socket.id,
+        action: 'player',
+        left: hero.left
+    })
 
 });
