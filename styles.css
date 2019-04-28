@@ -34,8 +34,11 @@ div#container {
   bottom: 60px;
   left: 400px;
   filter: brightness(1.5);
-  background-image: url(images/still.png);
   transition: .5s transform ease-in-out, .5s opacity;
+  
+  background-image: url(images/MasterChiefOriginal.png);
+  background-repeat: no-repeat;
+  background-position: 0 -7px;
 }
 
 .character.dead {
@@ -45,11 +48,11 @@ div#container {
 }
 
 .character.isRunning {
-  animation: 1s run infinite;
+  animation: 1s run steps(10) infinite;
 }
 
 .character.isShooting {
-  background-image: url(images/shoot.png);
+  background-position: -50px -7px;
 }
 
 
@@ -72,16 +75,7 @@ div#container {
 /* Animations */
 
 @keyframes run {
-  0% { background-image: url(images/run/1.png) }
-  10% { background-image: url(images/run/2.png) }
-  20% { background-image: url(images/run/3.png) }
-  30% { background-image: url(images/run/4.png) }
-  40% { background-image: url(images/run/5.png) }
-  50% { background-image: url(images/run/6.png) }
-  60% { background-image: url(images/run/7.png) }
-  70% { background-image: url(images/run/8.png) }
-  80% { background-image: url(images/run/9.png) }
-  90% { background-image: url(images/run/10.png) }
-  100% { background-image: url(images/run/1.png) }
+  from { background-position: -116px -7px }
+  to { background-position: -609px -7px }
 }
 

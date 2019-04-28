@@ -1,6 +1,5 @@
 var socket = io('https://pchat.day4.live');
 
-var enemies = []
 var $enemies = {}
 var hero = null
 
@@ -20,6 +19,7 @@ function Character(id, left) {
     this.bottom = bottomGround;
     this.top = 120;
     this.vSpeed = 0;
+    this.hSpeed = 0;
 
     this.health = 100;
 
@@ -50,11 +50,6 @@ Character.prototype.hit = function() {
 }
 Character.prototype.destroy = function() {
     this.$el.remove()
-    var i = enemies.indexOf(this)
-    if (i > -1) {
-        enemies.splice(i, 1);
-    }
-
     delete $enemies[this.id]
 }
 Character.prototype.move = function(toLeft, left) {
@@ -72,6 +67,7 @@ Character.prototype.move = function(toLeft, left) {
 function Bullet(x, y, toLeft, id) {
     this.left = x;
     this.bottom = y;
+    this.vSpeed = 0;
     this.toLeft = toLeft;
     this.impact = 0;
 
@@ -87,6 +83,9 @@ function Bullet(x, y, toLeft, id) {
 
             if (this.toLeft) this.left -= 10;
             else this.left += 10;
+            this.vSpeed -= 0.01
+            this.bottom += this.vSpeed
+            this.$el.css('bottom', this.bottom + 'px');
 
             if (this.left > 800 || this.left < 0) {
                 this.$el.remove();
@@ -94,6 +93,7 @@ function Bullet(x, y, toLeft, id) {
 
                 isHit(this, hero)
                 
+                var enemies = Object.values($enemies)
                 for(var i = 0; i < enemies.length; i++) {
                     isHit(this, enemies[i])
                 }
@@ -127,8 +127,6 @@ function createEnemy(id, left) {
     var enemy = new Character(id, left);
 
     enemy.$el.addClass('purple');
-
-    enemies.push(enemy);
     update(enemy)
 }
 
@@ -159,29 +157,24 @@ function update(cha) {
     // bottomGround ; gravity ; cha.vSpeed
     cha.vSpeed -= gravity / fps;
     cha.bottom += cha.vSpeed;
+
+    if (cha.bottom <= bottomGround) {
+        cha.vSpeed = 0;
+        cha.bottom = bottomGround;
+    }
+
     cha.$el.css('bottom', cha.bottom + 'px');
     
-    if (cha.running) {
-        if (cha.toLeft) {
-            cha.left -= 1;
-        } else {
-            cha.left += 1;
-        }
-
-        if (cha.left < 0) {
-            cha.left = 0;
-            cha.running = false;
-            cha.$el.removeClass('isRunning')
-        }
-
-        if (cha.left > 750) {
-            cha.left = 750;
-            cha.running = false;
-            cha.$el.removeClass('isRunning')
-        }
-
-        cha.$el.css('left', cha.left + 'px');
+    cha.left += cha.hSpeed;
+    if (cha.left < 0) {
+        cha.left = 0;
     }
+
+    if (cha.left > 750) {
+        cha.left = 750;
+    }
+
+    cha.$el.css('left', cha.left + 'px');
 
     requestAnimationFrame(function() {
         if (cha.alive) update(cha);
@@ -211,6 +204,7 @@ function shoot(cha) {
 function stopRunning(cha) {
     cha.running = false;
     cha.$el.removeClass('isRunning');
+    cha.hSpeed = 0;
 }
 
 
@@ -219,6 +213,7 @@ function goLeft(cha) {
     cha.toLeft = true;
     cha.$el.addClass('isRunning');
     cha.$el.addClass('toLeft');
+    cha.hSpeed = -1;
 }
 
 function goRight(cha) {
@@ -226,6 +221,32 @@ function goRight(cha) {
     cha.toLeft = false;
     cha.$el.addClass('isRunning');
     cha.$el.removeClass('toLeft');
+    cha.hSpeed = 1;
+}
+
+function updateEnemy(orig, remote) {
+    orig.alive = remote.alive;
+    orig.running = remote.running;
+    orig.shooting = remote.shooting;
+    orig.left = remote.left;
+    orig.bottom = remote.bottom;
+    orig.top = remote.top;
+    orig.vSpeed = remote.vSpeed;
+    orig.hSpeed = remote.hSpeed;
+    orig.health = remote.health;
+    orig.toLeft = remote.toLeft;
+
+    if (orig.running) {
+        orig.$el.addClass('isRunning');
+    } else {
+        orig.$el.removeClass('isRunning');
+    }
+
+    if (orig.toLeft) {
+        orig.$el.addClass('toLeft');
+    } else {
+        orig.$el.removeClass('toLeft');
+    }
 }
 
 socket.on('connect', function() {
@@ -251,25 +272,20 @@ socket.on('data', function(data){
 
         case 'shoot':
             if (data.id in $enemies) {
+                updateEnemy($enemies[data.id], data.character);
                 shoot($enemies[data.id]);
             }
             break;
 
-        case 'goLeft':
+        case 'update':
             if (data.id in $enemies) {
-                goLeft($enemies[data.id]);
+                updateEnemy($enemies[data.id], data.character);
             }
             break;
 
-        case 'goRight':
+        case 'disconnect':
             if (data.id in $enemies) {
-                goRight($enemies[data.id])
-            }
-            break;
-
-        case 'stopRunning':
-            if (data.id in $enemies) {
-                stopRunning($enemies[data.id]);
+                $enemies[data.id].destroy();
             }
             break;
     }
@@ -284,40 +300,49 @@ $(document).ready(function() {
         update(hero);
     });
 
-    $(document).keyup(function(e) {
+    document.addEventListener('keyup', function(e) {
         switch(e.which) {
             case 65: 
             case 68:
-                socket.emit('data', { action: 'stopRunning' })
                 stopRunning(hero);
+                socket.emit('data', { action: 'update', character: hero })
                 break;
         }
     });
 
-    $(document).keydown(function(e) {
+    document.addEventListener('keydown', function(e) {
+        console.log(e);
         switch(e.which) {
             case 32:
-                hero.vSpeed = 5;
+                if (bottomGround === hero.bottom) {
+                    hero.vSpeed += 5;
+                    socket.emit('data', { action: 'update', character: hero })
+                }
                 break;
 
             case 65: /* left */
-                socket.emit('data', { action: 'goLeft' })
                 goLeft(hero);
-            break;
+                socket.emit('data', { action: 'update', character: hero })
+                break;
 
             case 68: /* right */
-                socket.emit('data', { action: 'goRight' })
                 goRight(hero)
-            break;
+                socket.emit('data', { action: 'update', character: hero })
+                break;
 
+            //case 
             default: return; /* exit this handler for other keys */
         }
         e.preventDefault(); /* prevent the default action (scroll / move caret) */
     });
 
-    $(document).mousedown(function (e) {
-        socket.emit('data', { action: 'shoot' })
+    document.addEventListener('mousedown', function (e) {
+        socket.emit('data', { action: 'shoot', character: hero })
         shoot(hero);
+    })
+
+    window.addEventListener('beforeunload', function () {
+        socket.emit('data', { action: 'disconnect' })
     })
 
     socket.on('ok', function() {
