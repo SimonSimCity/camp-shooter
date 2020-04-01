@@ -72,6 +72,10 @@ div#container {
   transform: rotateY(180deg);
 }
 
+.toLeft .health {
+  transform: rotateY(180deg);
+}
+
 .health {
   position: absolute;
   top: -12px;
