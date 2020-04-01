@@ -56,15 +56,15 @@ div#container {
 }
 
 
-.character.purple {
+.character.enemy:nth-child(2n+1) {
   filter: brightness(1.5) hue-rotate(200deg);
 }
 
-.character.blue {
+.character.enemy:nth-child(2n+2) {
   filter: brightness(1.5) hue-rotate(100deg);
 }
 
-.character.orange {
+.character.enemy:nth-child(2n+3) {
   filter: brightness(1.5) hue-rotate(300deg);
 }
 

@@ -21,7 +21,7 @@
         </div>
       </div>
 
-      <div v-for="enemy in enemies" class="character purple"
+      <div v-for="enemy in enemies" class="character enemy"
         :class="{ isRunning: enemy.hSpeed !== 0, toLeft: enemy.toLeft, isShooting: enemy.shooting }" :id="enemy.id"
         :style="{ left: enemy.left + 'px', bottom: enemy.bottom + 'px' }">
         <div class="health">
