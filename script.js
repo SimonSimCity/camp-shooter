@@ -1,4 +1,4 @@
-var socket = io('https://pchat.day4.live');
+var socket = io('http://localhost:8080');
 
 var gravity = 9.8;
 var bottomGround = 60;
@@ -7,7 +7,7 @@ var fps = 60
 /* CLASSES */
 
 class Character {
-    constructor(id, left) {
+    constructor(id, left, health = 100) {
         this.id = id
 
         this.alive = true;
@@ -18,7 +18,7 @@ class Character {
         this.vSpeed = 0;
         this.hSpeed = 0;
 
-        this.health = 100;
+        this.health = health;
 
         this.toLeft = this.left > 400;
     }
@@ -27,12 +27,16 @@ class Character {
         this.health -= 10;
 
         if (this.health < 1) {
-            this.alive = false
+            this.alive = false;
 
-            var cha = this
+            document.getElementById(this.id).classList.add('dead');
+
+            const character = this;
             setTimeout(function () {
-                cha.alive = true;
-                cha.health = 100;
+                character.alive = true;
+                character.health = 100;
+
+                document.getElementById(character.id).classList.remove('dead');
             }, 5000)
         }
     }
@@ -59,9 +63,8 @@ const game = new Vue({
     },
 
     methods: {
-        createEnemy(id, left) {
-            var enemy = new Character(id, left);
-            // update(enemy)
+        createEnemy(id, left, health) {
+            var enemy = new Character(id, left, health);
 
             this.enemies[id] = enemy;
         },
@@ -74,92 +77,109 @@ const game = new Vue({
             }
 
             Object.keys(remote).forEach((el) => {
+                // Do not overwrite id because for every remote it's 'hero', 
+                // while here we want it to be the socket id
+                if (el === "id") {
+                    return;
+                }
                 orig[el] = remote[el]
-            })
-
-            console.log(id, orig.vSpeed)
+            });
         },
 
         removeEnemy(id) {
             delete this.enemies[id]
         },
-        
-        shoot(cha) {
-            if (!cha.shooting) {
-                cha.shooting = 10;
-        
+
+        shoot(character) {
+            if (!character.shooting) {
+                character.shooting = 10;
+
                 var x;
-                var y = cha.bottom + 50;
-        
-                if (cha.toLeft) {
-                    x = cha.left - 8;
+                var y = character.bottom + 50;
+
+                if (character.toLeft) {
+                    x = character.left - 8;
                 } else {
-                    x = cha.left + 50;
+                    x = character.left + 50;
                 }
-        
-                this.bullets.push(new Bullet(x, y, cha.toLeft, cha.id))
+
+                this.bullets.push(new Bullet(x, y, character.toLeft, character.id))
+            }
+        },
+
+        checkIfBulletHitsCharacter(bullet, character) {
+            if (!character.alive) return false;
+
+            if (bullet.left + 4 > character.left &&
+                bullet.left + 4 < character.left + 50) {
+                if (bullet.bottom + 3 > character.bottom &&
+                    bullet.bottom + 3 < character.top) {
+
+                    character.hit();
+                    bullet.impact = 10;
+                }
             }
         },
 
         updateView() {
-            this.bullets.forEach(b => {
-                if (b.impact) {
-                    b.impact--
-                    if (b.impact === 1) {
-                        this.bullets.splice(this.bullets.indexOf(b), 1)
+            this.bullets.forEach(bullet => {
+                if (bullet.impact) {
+                    bullet.impact--
+                    if (bullet.impact === 1) {
+                        this.bullets.splice(this.bullets.indexOf(bullet), 1)
                     }
                 } else {
-                    if (b.toLeft) {
-                        b.left -= 10;
+                    if (bullet.toLeft) {
+                        bullet.left -= 10;
                     }
                     else {
-                        b.left += 10;
+                        bullet.left += 10;
                     }
-    
-                    b.vSpeed -= 0.01
-                    b.bottom += b.vSpeed
-    
-                    if (b.left > 800 || b.left < 0) {
-                        this.bullets.splice(this.bullets.indexOf(b), 1)
+
+                    bullet.vSpeed -= 0.01
+                    bullet.bottom += bullet.vSpeed
+
+                    if (bullet.left > 800 || bullet.left < 0) {
+                        this.bullets.splice(this.bullets.indexOf(bullet), 1)
                     } else {
-                        isHit(b, this.hero)
-                        
-                        Object.values(this.enemies).forEach(e => {
-                            isHit(b, e)
+                        this.checkIfBulletHitsCharacter(bullet, this.hero)
+
+                        Object.values(this.enemies).forEach(enemy => {
+                            this.checkIfBulletHitsCharacter(bullet, enemy)
                         })
                     }
                 }
             });
 
-            [this.hero, ...Object.values(this.enemies)].forEach(function (cha) {
-                if (!cha.alive) return false;
-            
-                if (cha.shooting) {
-                    cha.shooting--
+            [this.hero, ...Object.values(this.enemies)].forEach(function (character) {
+                if (!character.alive) return false;
+
+                if (character.shooting) {
+                    character.shooting--
                 }
-            
-                // bottomGround ; gravity ; cha.vSpeed
-                cha.vSpeed -= gravity / fps;
-                cha.bottom += cha.vSpeed;
-            
-                if (cha.bottom <= bottomGround && cha.vSpeed < 0) {
-                    cha.vSpeed = 0;
-                    cha.bottom = bottomGround;
+
+                // bottomGround ; gravity ; character.vSpeed
+                character.vSpeed -= gravity / fps;
+                character.bottom += character.vSpeed;
+
+                if (character.bottom <= bottomGround && character.vSpeed < 0) {
+                    character.vSpeed = 0;
+                    character.bottom = bottomGround;
                 }
-                            
-                cha.left += cha.hSpeed;
-                if (cha.left < 0) {
-                    cha.left = 0;
+
+                character.left += character.hSpeed;
+                if (character.left < 0) {
+                    character.left = 0;
                 }
-            
-                if (cha.left > 750) {
-                    cha.left = 750;
+
+                if (character.left > 750) {
+                    character.left = 750;
                 }
             })
 
             requestAnimationFrame(() => {
                 this.updateView()
-            });    
+            });
         }
     },
 
@@ -167,7 +187,8 @@ const game = new Vue({
         socket.emit('data', {
             id: socket.id,
             action: 'player',
-            left: this.hero.left
+            left: this.hero.left,
+            health: this.hero.health
         })
 
         requestAnimationFrame(() => {
@@ -178,59 +199,45 @@ const game = new Vue({
 
 /* FUNCTIONS */
 
-function isHit(bul, cha) {
-    if (!cha.alive) return false;
-
-    if (bul.left + 4 > cha.left && 
-      bul.left + 4 < cha.left + 50) {
-        if (bul.bottom + 3 > cha.bottom &&
-          bul.bottom + 3 < cha.top) {
-
-            cha.hit();
-            bul.impact = 10;
-        }
-    }
+function stopRunning(character) {
+    character.hSpeed = 0;
 }
 
-function stopRunning(cha) {
-    cha.hSpeed = 0;
+function goLeft(character) {
+    character.toLeft = true;
+    character.hSpeed = -1;
 }
 
-function goLeft(cha) {
-    cha.toLeft = true;
-    cha.hSpeed = -1;
+function goRight(character) {
+    character.toLeft = false;
+    character.hSpeed = 1;
 }
 
-function goRight(cha) {
-    cha.toLeft = false;
-    cha.hSpeed = 1;
-}
-
-socket.on('connect', function() {
+socket.on('connect', function () {
     console.info('Welcome', ' ', socket.id);
     socket.emit('token', 'qwerty');
 });
 
-socket.on('disconnect', function() {
+socket.on('disconnect', function () {
     console.info('Connection lost', ' ', socket.id);
 });
 
-socket.on('data', function(data){
-    console.info(data);
+socket.on('data', function (data) {
+    console.log(data);
 
     if (!data || !data.action) return false;
 
-    switch(data.action) {
+    switch (data.action) {
         case 'player':
             if (data.id) {
-                game.createEnemy(data.id, data.left);
+                game.createEnemy(data.id, data.left, data.health);
             }
             break;
 
         case 'shoot':
-            if (data.id in $enemies) {
-                updateEnemy($enemies[data.id], data.character);
-                shoot($enemies[data.id]);
+            if (data.id in game.enemies) {
+                game.updateEnemy(game.enemies[data.id], data.character);
+                game.shoot(game.enemies[data.id]);
             }
             break;
 
@@ -244,29 +251,39 @@ socket.on('data', function(data){
     }
 });
 
-document.addEventListener('keyup', function(e) {
-    switch(e.which) {
-        case 65: 
-        case 68:
+document.addEventListener('keyup', function (e) {
+    if (!game.hero.alive) {
+        return;
+    }
+
+    switch (e.code) {
+        case 'KeyA':
+        case 'KeyD':
             stopRunning(game.hero);
             socket.emit('data', { action: 'update', character: game.hero })
             break;
     }
 });
 
-document.addEventListener('keydown', function(e) {
-    switch(e.which) {
-        case 32:
-            game.hero.vSpeed += 5;
-            socket.emit('data', { action: 'update', character: game.hero })
+document.addEventListener('keydown', function (e) {
+    if (!game.hero.alive) {
+        return;
+    }
+
+    switch (e.code) {
+        case 'KeyW':
+            if (bottomGround === game.hero.bottom) {
+                game.hero.vSpeed += 5;
+                socket.emit('data', { action: 'update', character: game.hero })
+            }
             break;
 
-        case 65: /* left */
+        case 'KeyA': /* left */
             goLeft(game.hero);
             socket.emit('data', { action: 'update', character: game.hero })
             break;
 
-        case 68: /* right */
+        case 'KeyD': /* right */
             goRight(game.hero)
             socket.emit('data', { action: 'update', character: game.hero })
             break;
@@ -274,7 +291,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener('mousedown', function (e) {
-    shoot(game.hero);
+    game.shoot(game.hero);
     socket.emit('data', { action: 'shoot', character: hero })
 })
 
