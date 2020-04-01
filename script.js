@@ -29,14 +29,10 @@ class Character {
         if (this.health < 1) {
             this.alive = false;
 
-            document.getElementById(this.id).classList.add('dead');
-
             const character = this;
             setTimeout(function () {
                 character.alive = true;
                 character.health = 100;
-
-                document.getElementById(character.id).classList.remove('dead');
             }, 5000)
         }
     }

@@ -14,7 +14,7 @@
   <div id="game">
     <h1>{{ headline }}</h1>
     <div id="container">
-      <div class="character" :class="{ isRunning: hero.hSpeed !== 0, toLeft: hero.toLeft, isShooting: hero.shooting }"
+      <div class="character" :class="{ isRunning: hero.hSpeed !== 0, toLeft: hero.toLeft, isShooting: hero.shooting, dead: !hero.alive }"
         :id="hero.id" :style="{ left: hero.left + 'px', bottom: hero.bottom + 'px' }">
         <div class="health">
           {{ hero.health }}
@@ -22,7 +22,7 @@
       </div>
 
       <div v-for="enemy in enemies" class="character enemy"
-        :class="{ isRunning: enemy.hSpeed !== 0, toLeft: enemy.toLeft, isShooting: enemy.shooting }" :id="enemy.id"
+        :class="{ isRunning: enemy.hSpeed !== 0, toLeft: enemy.toLeft, isShooting: enemy.shooting, dead: !enemy.alive }" :id="enemy.id"
         :style="{ left: enemy.left + 'px', bottom: enemy.bottom + 'px' }">
         <div class="health">
           {{ enemy.health }}
