@@ -283,13 +283,13 @@ document.addEventListener('keydown', function (e) {
             goRight(game.hero)
             socket.emit('data', { action: 'update', character: game.hero })
             break;
+
+        case 'KeyE':
+            game.shoot(game.hero);
+            socket.emit('data', { action: 'shoot', character: hero })
+            break;        
     }
 });
-
-document.addEventListener('mousedown', function (e) {
-    game.shoot(game.hero);
-    socket.emit('data', { action: 'shoot', character: hero })
-})
 
 window.addEventListener('beforeunload', function () {
     socket.emit('data', { action: 'disconnect' })
