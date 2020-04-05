@@ -28,7 +28,7 @@ div#container {
 }
 
 .character {
-  width: 50px;
+  width: 45px;
   height: 60px;
   position: absolute;
   bottom: 60px;
@@ -87,6 +87,6 @@ div#container {
 
 @keyframes run {
   from { background-position: -116px -7px }
-  to { background-position: -609px -7px }
+  to { background-position: -616px -7px }
 }
 
